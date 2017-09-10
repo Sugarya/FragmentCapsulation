@@ -10,19 +10,20 @@ import android.support.v4.app.FragmentManager;
 import android.support.v4.app.FragmentTransaction;
 import android.support.v4.app.FragmentTransactionBugFixHack;
 import android.support.v7.app.AppCompatActivity;
+import android.text.TextUtils;
+import android.view.View;
+
 import com.sugary.fragmentcapsulation.R;
 
 import java.util.ArrayDeque;
 import java.util.Deque;
 import java.util.List;
 import butterknife.ButterKnife;
-import butterknife.Unbinder;
 
 import static com.sugary.fragmentcapsulation.base.BasicActivity.LaunchMode.STANDARD;
 
-
 /**
- * Created by Ethan on 2017/03/30.
+ * Created by Ethan on 17/1/17.
  * 1.控件绑定  2. 提供替换fragment方法 show/replace,支持单例模式启动  3.管理fragment回退
  */
 public abstract class BasicActivity extends AppCompatActivity {
@@ -39,38 +40,35 @@ public abstract class BasicActivity extends AppCompatActivity {
      */
     private Fragment mCurrentFragment;
 
+    private String mLastFragmentName = "";
+
     /**
      * 调用popBackStack系列方法，可通过设置此变量实现通信，为onSupportBackPressed()入参
      */
     private Bundle mSupportBackStackArguments;
     private Handler mHandler;
-    private Unbinder mUnBinder;
 
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(getLayoutResID());
-        mUnBinder = ButterKnife.bind(this);
+        ButterKnife.bind(this);
     }
 
     @Override
     protected void onResume() {
         super.onResume();
-        checkAppAccountValid();
+        checkAppVersion();
     }
 
-    /**
-     * 判断App账号有效性
-     */
-    private void checkAppAccountValid() {
+    private void checkAppVersion() {
 
     }
+
 
     @Override
     protected void onDestroy() {
-        if(mUnBinder != null) {
-            mUnBinder.unbind();
-        }
+
         super.onDestroy();
     }
 
@@ -105,9 +103,10 @@ public abstract class BasicActivity extends AppCompatActivity {
 
     /**
      * 替换当前Fragment里的某个FrameLayout布局
-     * @param resId 被替换的布局ID
+     *
+     * @param resId       被替换的布局ID
      * @param fragmentTab 新的Fragment名
-     * @param arguments 传入新的Fragment的Bundle
+     * @param arguments   传入新的Fragment的Bundle
      * @param isAddToBack 是否加入回退栈
      */
     private void replaceOneFragment(@IdRes int resId, String fragmentTab, Bundle arguments, boolean isAddToBack) {
@@ -130,6 +129,8 @@ public abstract class BasicActivity extends AppCompatActivity {
             }
 
             transaction.commitAllowingStateLoss();
+
+            mLastFragmentName = mCurrentFragment.getClass().getSimpleName();
         }
     }
 
@@ -140,7 +141,20 @@ public abstract class BasicActivity extends AppCompatActivity {
      * @param fragmentTab
      */
     public void showOneFragment(String fragmentTab) {
-        showOneFragment(fragmentTab, null, true, STANDARD,true);
+        showOneFragment(fragmentTab, new Bundle(), true, STANDARD, true, null, null);
+    }
+
+    /**
+     * 显示特定Tag的Fragment,如果是第一次显示,则新建并添加该Fragment
+     *
+     * @param fragmentTab
+     */
+    public void showOneFragment(String fragmentTab, boolean isAddToStack, boolean isAnimation) {
+        showOneFragment(fragmentTab, new Bundle(), isAddToStack, STANDARD, isAnimation, null, null);
+    }
+
+    public void showOneFragment(String fragmentTab, LaunchMode launchMode) {
+        showOneFragment(fragmentTab, new Bundle(), true, launchMode, true, null, null);
     }
 
     /**
@@ -150,7 +164,7 @@ public abstract class BasicActivity extends AppCompatActivity {
      * @param isAddToStack 第一次显示时，是否加入回退栈
      */
     public void showOneFragment(String fragmentTab, boolean isAddToStack) {
-        showOneFragment(fragmentTab, null, isAddToStack, STANDARD,true);
+        showOneFragment(fragmentTab, new Bundle(), isAddToStack, STANDARD, true, null, null);
     }
 
     /**
@@ -161,8 +175,12 @@ public abstract class BasicActivity extends AppCompatActivity {
      * @param launchMode
      * @param transitionAnimationEnable
      */
-    public void showOneFragment(String fragmentTab, boolean isAddToStack,LaunchMode launchMode, boolean transitionAnimationEnable) {
-        showOneFragment(fragmentTab, null, isAddToStack, launchMode,transitionAnimationEnable);
+    public void showOneFragment(String fragmentTab, boolean isAddToStack, LaunchMode launchMode, boolean transitionAnimationEnable) {
+        showOneFragment(fragmentTab, new Bundle(), isAddToStack, launchMode, transitionAnimationEnable, null, null);
+    }
+
+    public void showOneFragment(String fragmentTab, boolean isAddToStack, LaunchMode launchMode) {
+        showOneFragment(fragmentTab, new Bundle(), isAddToStack, launchMode, true, null, null);
     }
 
 
@@ -173,11 +191,15 @@ public abstract class BasicActivity extends AppCompatActivity {
      * @param arguments
      */
     public void showOneFragment(String fragmentTab, Bundle arguments) {
-        showOneFragment(fragmentTab, arguments, true, STANDARD,true);
+        showOneFragment(fragmentTab, arguments, true, STANDARD, true, null, null);
     }
 
     public void showOneFragment(String fragmentTab, Bundle arguments, LaunchMode launchMode) {
-        showOneFragment(fragmentTab, arguments, true, launchMode,true);
+        showOneFragment(fragmentTab, arguments, true, launchMode, true, null, null);
+    }
+
+    public void showOneFragment(String fragmentTab, View shareElement, String transitionName) {
+        showOneFragment(fragmentTab, new Bundle(), true, STANDARD, false, shareElement, transitionName);
     }
 
     /**
@@ -188,7 +210,7 @@ public abstract class BasicActivity extends AppCompatActivity {
      * @param isAddBackStack 是否加入FragmentManager回退栈
      * @param launchMode     启动模式 分为： STANDARD，SINGLE，SINGLE_ENHANCEMENT
      */
-    private void showOneFragment(String fragmentTab, Bundle arguments, boolean isAddBackStack, LaunchMode launchMode, boolean transitionAnimationEnable) {
+    private void showOneFragment(String fragmentTab, Bundle arguments, boolean isAddBackStack, LaunchMode launchMode, boolean transitionAnimationEnable, View shareElement, String transitionName) {
         FragmentManager manager = getSupportFragmentManager();
         if (manager == null) {
             return;
@@ -197,6 +219,9 @@ public abstract class BasicActivity extends AppCompatActivity {
         Fragment fragmentByTag = manager.findFragmentByTag(fragmentTab);
 
         if (fragmentByTag != null && launchMode == LaunchMode.SINGLE_ENHANCEMENT) {
+            if (mCurrentFragment != null) {
+                mLastFragmentName = mCurrentFragment.getClass().getSimpleName();
+            }
             popMultipleBackStack(fragmentTab, arguments);
             return;
         }
@@ -204,7 +229,7 @@ public abstract class BasicActivity extends AppCompatActivity {
         FragmentTransaction transaction = manager.beginTransaction();
 
         //设置过渡动画
-        if(transitionAnimationEnable) {
+        if (transitionAnimationEnable) {
             transaction.setCustomAnimations(R.anim.right_enter, R.anim.left_exit, 0, 0);
         }
 
@@ -219,11 +244,31 @@ public abstract class BasicActivity extends AppCompatActivity {
         }
         //第一次添加该Fragment
         if (fragmentByTag == null) {
-            mCurrentFragment = fragmentProvider(fragmentTab, arguments);
-            if(launchMode != LaunchMode.DEFAULT) {
-                mFragmentBackDeque.push(fragmentTab);
+            if (mCurrentFragment != null) {
+                mLastFragmentName = mCurrentFragment.getClass().getSimpleName();
             }
+            mCurrentFragment = fragmentProvider(fragmentTab, arguments);
+//            if (launchMode != DEFAULT) {
+//                mFragmentBackDeque.push(fragmentTab);
+//            }
+
+            switch (launchMode) {
+                case DEFAULT:
+                    break;
+                case EXCHANGE:
+                    if (mFragmentBackDeque.size() >= 1) {
+                        mFragmentBackDeque.pop();
+                        mFragmentBackDeque.push(fragmentTab);
+                    }
+                    break;
+                default:
+                    mFragmentBackDeque.push(fragmentTab);
+            }
+
             transaction.add(getFragmentContainerResID(), mCurrentFragment, fragmentTab);
+            if (shareElement != null && !TextUtils.isEmpty(transitionName)) {
+                transaction.addSharedElement(shareElement, transitionName);
+            }
             if (isAddBackStack) {
                 transaction.addToBackStack(fragmentTab);
             }
@@ -232,7 +277,7 @@ public abstract class BasicActivity extends AppCompatActivity {
         }
 
         if (!(fragmentByTag instanceof BasicFragment)) {
-            throw new ClassCastException("fragment must extends BasicFragment");
+            throw new ClassCastException("The fragment must extend BasicFragment");
         }
 
         //更新Arguments，按后退键时Fragment里的后退方法里使用
@@ -242,6 +287,12 @@ public abstract class BasicActivity extends AppCompatActivity {
 
         //根据启动模式类型，采取不同的方式维护后退栈
         switch (launchMode) {
+            case EXCHANGE:
+                if (mFragmentBackDeque.size() >= 1) {
+                    mFragmentBackDeque.pop();
+                    mFragmentBackDeque.push(fragmentTab);
+                }
+                break;
             case STANDARD:
                 mFragmentBackDeque.push(fragmentTab);
                 break;
@@ -249,10 +300,15 @@ public abstract class BasicActivity extends AppCompatActivity {
                 synchronizeFragmentBackDequeWhenSingleLaunchMode(fragmentTab);
                 break;
         }
-
-        BasicFragment basicFragment = (BasicFragment) fragmentByTag;
+        if (mCurrentFragment != null) {
+            mLastFragmentName = mCurrentFragment.getClass().getSimpleName();
+        }
         mCurrentFragment = fragmentByTag;
+        BasicFragment basicFragment = (BasicFragment) fragmentByTag;
         basicFragment.setSupportArguments(arguments);
+        if (shareElement != null && !TextUtils.isEmpty(transitionName)) {
+            transaction.addSharedElement(shareElement, transitionName);
+        }
         transaction.show(fragmentByTag);
         transaction.commitAllowingStateLoss();
     }
@@ -269,8 +325,9 @@ public abstract class BasicActivity extends AppCompatActivity {
 
     /**
      * 提供fragment
+     *
      * @param fragmentTab Fragment标签
-     * @param arguments 传入Fragment的参数
+     * @param arguments   传入Fragment的参数
      * @return
      */
     protected BasicFragment fragmentProvider(String fragmentTab, Bundle arguments) {
@@ -359,8 +416,8 @@ public abstract class BasicActivity extends AppCompatActivity {
     /**
      * 修复Fragment出栈后，栈内顺序不正确的bug
      */
-    private void reorderAvailIndicesToFixBug(){
-        if(mHandler == null) {
+    private void reorderAvailIndicesToFixBug() {
+        if (mHandler == null) {
             mHandler = new Handler(getMainLooper());
         }
         mHandler.post(new Runnable() {
@@ -395,6 +452,8 @@ public abstract class BasicActivity extends AppCompatActivity {
             return;
         }
 
+        mLastFragmentName = mCurrentFragment.getClass().getSimpleName();
+
         //检查当前Fragment的ChildFragmentManager回退栈是否需要回退
         int childStackEntryCount = mCurrentFragment.getChildFragmentManager().getBackStackEntryCount();
         if (childStackEntryCount > 0) {
@@ -408,9 +467,10 @@ public abstract class BasicActivity extends AppCompatActivity {
             return;
         }
 
-        if(mCurrentFragment instanceof BasicFragment){
-            BasicFragment basicFragment = (BasicFragment)mCurrentFragment;
-            if(basicFragment.onBackPressed()){
+        //检查当前Fragment内部是否有待处理的回退逻辑
+        if (mCurrentFragment instanceof BasicFragment) {
+            BasicFragment basicFragment = (BasicFragment) mCurrentFragment;
+            if (basicFragment.onBackPressed()) {
                 return;
             }
         }
@@ -438,6 +498,10 @@ public abstract class BasicActivity extends AppCompatActivity {
     }
 
 
+    public String getLastFragmentName() {
+        return mLastFragmentName;
+    }
+
     protected abstract
     @LayoutRes
     int getLayoutResID();
@@ -453,9 +517,14 @@ public abstract class BasicActivity extends AppCompatActivity {
          */
         DEFAULT,
         /**
-         * 标准模式
+         * 标准模式 记录回退记录
          */
         STANDARD,
+
+        /**
+         * 置换当前自维护的栈顶记录
+         */
+        EXCHANGE,
         /**
          * 单例模式，其他Fragment从自维护的mFragmentBackDeque栈里退出
          */

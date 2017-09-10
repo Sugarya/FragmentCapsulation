@@ -5,27 +5,42 @@ import android.os.Bundle;
 import android.support.annotation.LayoutRes;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
-import android.support.v4.app.Fragment;
 import android.support.v4.app.FragmentManager;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-
+import com.sugary.fragmentcapsulation.rxlife.RxSupportFragment;
 import com.sugary.fragmentcapsulation.utils.RxBus;
 import com.zhy.m.permission.MPermissions;
 
 import butterknife.ButterKnife;
-import butterknife.Unbinder;
 import rx.functions.Action1;
 import rx.subscriptions.CompositeSubscription;
 
 /**
+ * 给rootView设置一个OnKeyListener来监听key事件
+ * <p>
+ * mRootView.setFocusable(true);
+ * mRootView.setFocusableInTouchMode(true);
+ * mRootView.setOnKeyListener(new View.OnKeyListener() {
  *
- * Created by Ethan on 2017/03/30.
+ * @Override public boolean onKey(View v, int keyCode, KeyEvent event) {
+ * if (keyCode == KeyEvent.KEYCODE_BACK) {
+ * //不一定是要触发返回栈，可以做一些其他的事情
+ * getActivity().onBackPressed();
+ * return true;
+ * }
+ * return false;
+ * }
+ * });
+ * <p>
+ * Created by Ethan on 17/1/17.
  * 1.绑定视图  2.RxBus订阅管理  3.Fragment回退栈回调管理  4.危险权限适配
- * 5.bundle解析
+ * 5.bundle解析  6.底部导航条动画管理
  */
-public abstract class BasicFragment extends Fragment {
+public abstract class BasicFragment extends RxSupportFragment {
+
+    private static final String TAG = "BasicFragment";
 
     private BasicActivity mActivity;
     private int mLastChildStackEntryCount = 0;
@@ -39,29 +54,28 @@ public abstract class BasicFragment extends Fragment {
      * Subscription对象的容器
      */
     private CompositeSubscription mCompositeSubscription;
-    private Unbinder mBind;
 
     /**
      * 防止fragment onDetach后调用getActivity空指针，不足：有可能内存泄漏
+     *
      * @param context
      */
     @Override
     public void onAttach(Context context) {
         super.onAttach(context);
-        mActivity = (BasicActivity)context;
+        mActivity = (BasicActivity) context;
     }
 
     @Override
     public void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         parseArguments(getArguments());
-        setHasOptionsMenu(true);
 
         getChildFragmentManager().addOnBackStackChangedListener(new FragmentManager.OnBackStackChangedListener() {
             @Override
             public void onBackStackChanged() {
                 int currentStackEntryCount = getChildFragmentManager().getBackStackEntryCount();
-                if(currentStackEntryCount - mLastChildStackEntryCount < 0){
+                if (currentStackEntryCount - mLastChildStackEntryCount < 0) {
                     configureToolbar();
                     onChildBackStack();
                 }
@@ -74,7 +88,7 @@ public abstract class BasicFragment extends Fragment {
             @Override
             public void onBackStackChanged() {
                 int currentStackEntryCount = manager.getBackStackEntryCount();
-                if(currentStackEntryCount - mLastSupportStackEntryCount < 0){
+                if (currentStackEntryCount - mLastSupportStackEntryCount < 0) {
                     onSupportBackStack(getAttachActivity().getSupportBackStackArguments());
                 }
                 mLastSupportStackEntryCount = currentStackEntryCount;
@@ -85,8 +99,8 @@ public abstract class BasicFragment extends Fragment {
     @Nullable
     @Override
     public View onCreateView(LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
-        View view = LayoutInflater.from(getContext()).inflate(getLayoutResID(),container,false);
-        mBind = ButterKnife.bind(this, view);
+        View view = LayoutInflater.from(getContext()).inflate(getLayoutResID(), container, false);
+        ButterKnife.bind(this, view);
         return view;
     }
 
@@ -98,37 +112,36 @@ public abstract class BasicFragment extends Fragment {
     @Override
     public void onHiddenChanged(boolean hidden) {
         super.onHiddenChanged(hidden);
-        if(!hidden){
+        if (!hidden) {
             parseArguments(getSupportArguments());
         }
     }
 
     /**
      * Fragment Argument解析
+     *
      * @param arguments
      */
-    protected void parseArguments(Bundle arguments){
+    protected void parseArguments(Bundle arguments) {
 
     }
-
 
     @Override
     public void onDestroyView() {
         super.onDestroyView();
-        mBind.unbind();
     }
 
     @Override
     public void onDestroy() {
-        if(mCompositeSubscription != null){
-            mCompositeSubscription.unsubscribe();
-        }
         super.onDestroy();
+        if (mCompositeSubscription != null) {
+            mCompositeSubscription.clear();
+        }
     }
 
 
-    private CompositeSubscription getCompositeSubscription(){
-        if(mCompositeSubscription == null){
+    private CompositeSubscription getCompositeSubscription() {
+        if (mCompositeSubscription == null) {
             mCompositeSubscription = new CompositeSubscription();
         }
         return mCompositeSubscription;
@@ -136,17 +149,18 @@ public abstract class BasicFragment extends Fragment {
 
     /**
      * 添加RxBus订阅
+     *
      * @param tClass
      * @param action1
      * @param errorAction1
      * @param <T>
      */
-    protected <T> void addSubscription(Class<T> tClass, Action1<T> action1, Action1<Throwable> errorAction1){
+    protected <T> void addSubscription(Class<T> tClass, Action1<T> action1, Action1<Throwable> errorAction1) {
         getCompositeSubscription()
-                .add(RxBus.getInstance().toSubscription(tClass, action1,errorAction1));
+                .add(RxBus.getInstance().toSubscription(tClass, action1, errorAction1));
     }
 
-    public BasicActivity getAttachActivity(){
+    public BasicActivity getAttachActivity() {
         return mActivity;
     }
 
@@ -159,6 +173,14 @@ public abstract class BasicFragment extends Fragment {
         mSupportArguments = supportArguments;
     }
 
+    protected void startEnterBottomBarAnimation(){
+
+    }
+
+    protected void startExitBottomBarAnimation(){
+
+    }
+
     /**
      * 当replace的置换Fragment时，重新show时，需要更新toolbar信息
      */
@@ -168,23 +190,25 @@ public abstract class BasicFragment extends Fragment {
     /**
      * 子Fragment回退栈 回调
      */
-    protected void onChildBackStack(){
+    protected void onChildBackStack() {
 
     }
 
     /**
      * Fragment里监听虚拟按键和实体按键的返回事件
+     *
      * @param bundle
      */
-    protected void onSupportBackStack(Bundle bundle){
+    protected void onSupportBackStack(Bundle bundle) {
 
     }
 
     /**
      * Fragment 监听回退键
+     *
      * @return true 消费，回退到此不再往下
      */
-    protected boolean onBackPressed(){
+    protected boolean onBackPressed() {
 
         return false;
     }
@@ -199,13 +223,14 @@ public abstract class BasicFragment extends Fragment {
         return -1;
     }
 
-    protected abstract @LayoutRes
+    protected abstract
+    @LayoutRes
     int getLayoutResID();
 
 
     @Override
     public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
-        MPermissions.onRequestPermissionsResult(this,requestCode,permissions,grantResults);
+        MPermissions.onRequestPermissionsResult(this, requestCode, permissions, grantResults);
     }
 }

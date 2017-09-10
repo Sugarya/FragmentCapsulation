@@ -3,4 +3,24 @@
     <color name="colorPrimary">#3F51B5</color>
     <color name="colorPrimaryDark">#303F9F</color>
     <color name="colorAccent">#FF4081</color>
+
+
+    <color name="yellow">#ffc555</color>
+    <color name="orange">#FF5E1F</color>
+
+
+
+    <color name="font_white">#f8f8f8</color>
+    <color name="font_black">#2a2a2a</color>
+    <color name="font_black_light">#666666</color>
+    <color name="font_gray">#999999</color>
+    <color name="font_gray_gray">#cccccc</color>
+    <color name="font_green">#00cc66</color>
+    <color name="font_red">#f02b2b</color>
+    <color name="font_red_tint">#ffcccd</color>
+    <color name="font_red_light">#ed4c4c</color>
+    <color name="font_red_qr">#F25757</color>
+    <color name="font_white_gray">#66fefeff</color>
+    <color name="font_filter_cover">#66cccccc</color>
+    <color name="font_gray_translucence">#77cccccc</color>
 </resources>

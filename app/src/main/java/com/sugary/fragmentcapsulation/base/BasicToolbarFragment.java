@@ -13,18 +13,18 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.view.WindowManager;
 import android.widget.TextView;
+
 import com.sugary.fragmentcapsulation.R;
 
 import butterknife.BindView;
 
 /**
- * Created by Ethan on 2017/03/30
- *
+ * Created by Ethan on 17/2/08.
  * 1.Toolbar设置 ,左侧返回键监听  2.屏幕顶部状态栏适配
  */
-public abstract class BasicFragmentWithToolbar extends BasicFragment {
+public abstract class BasicToolbarFragment extends BasicFragment {
 
-    private static final String TAG = "BasicFragmentWithToolbar";
+    private static final String TAG = BasicToolbarFragment.class.getSimpleName();
 
     @BindView(R.id.toolbar_include)
     Toolbar mToolbar;
@@ -36,7 +36,7 @@ public abstract class BasicFragmentWithToolbar extends BasicFragment {
     @Override
     public void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-
+        setHasOptionsMenu(true);
     }
 
     @Nullable
@@ -98,7 +98,7 @@ public abstract class BasicFragmentWithToolbar extends BasicFragment {
             FragmentManager.BackStackEntry stackEntry = getChildFragmentManager().getBackStackEntryAt(stackEntryCount - 1);
             //Get the name that was supplied to FragmentTransaction.addToBackStack(String) when creating this entry
             String fragmentTab = stackEntry.getName();
-            BasicFragmentWithToolbar fragmentByTag = (BasicFragmentWithToolbar) getChildFragmentManager().findFragmentByTag(fragmentTab);
+            BasicToolbarFragment fragmentByTag = (BasicToolbarFragment) getChildFragmentManager().findFragmentByTag(fragmentTab);
             if (fragmentByTag != null) {
                 fragmentByTag.setupToolbar();
             }
@@ -112,7 +112,7 @@ public abstract class BasicFragmentWithToolbar extends BasicFragment {
      */
     protected void setupToolbar() {
         if(mToolbar != null) {
-            mToolbar.setNavigationIcon(R.drawable.icon_header_left);
+            mToolbar.setNavigationIcon(R.drawable.icon_header_back);
             mToolbar.setNavigationOnClickListener(new View.OnClickListener() {
                 @Override
                 public void onClick(View v) {

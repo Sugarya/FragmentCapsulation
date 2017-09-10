@@ -21,6 +21,7 @@ android {
 
 dependencies {
     compile fileTree(dir: 'libs', include: ['*.jar'])
+    compile 'com.android.support:design:25.3.1'
     compile 'com.android.support:appcompat-v7:25.3.1'
     compile 'com.android.support.constraint:constraint-layout:1.0.0-beta5'
 
@@ -31,4 +32,7 @@ dependencies {
     compile 'io.reactivex:rxandroid:1.2.1'
     //permission request for 6.0
     compile 'com.zhy:mpermission-api:1.0.0'
+    compile('com.github.ozodrukh:CircularReveal:2.0.1@aar') {
+        transitive = true;
+    }
 }

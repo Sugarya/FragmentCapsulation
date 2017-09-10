@@ -1,13 +1,20 @@
 package com.sugary.fragmentcapsulation;
 
-import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 
-public class MainActivity extends AppCompatActivity {
+import com.sugary.fragmentcapsulation.base.BasicActivity;
+
+public class MainActivity extends BasicActivity {
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_main);
+
+
+    }
+
+    @Override
+    protected int getLayoutResID() {
+        return R.layout.activity_main;
     }
 }
